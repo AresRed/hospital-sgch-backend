@@ -19,4 +19,17 @@ public class Doctor extends Usuario{
     
     // Opcional: Horario de atención (se puede modelar como otra entidad más compleja)
     private String horarioAtencion; 
+
+    
+    @Column(nullable = false) // Ahora son obligatorios para la lógica de citas
+    private String horarioAtencionInicio = "09:00"; // Default para evitar null en DB
+    
+    @Column(nullable = false)
+    private String horarioAtencionFin = "17:00";   // Default
+    
+    @Column(nullable = false)
+    private Integer duracionCitaMinutos = 30; 
+    
 }
+
+

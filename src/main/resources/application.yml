@@ -1,0 +1,43 @@
+spring:
+
+  profiles:
+    active: dev
+  config:
+    import: optional:file:application.properties
+  application:
+    name: hospital-sgch-backend
+
+
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME}
+    password: ${EMAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/hospital-sgch
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update 
+    show-sql: true
+    properties:
+        jdbc:
+          time_zone: UTC
+
+jwt:
+  secret: RXN0YUVzTWlDbGF2ZVNlY3JldGFTdXBlckxhcmdhWVNlZ3VyYVBhcmFFbEhvc3BpdGFsU0dDSg # Clave secreta para firmar tokens
+  expiration: 3600000 # 1 hora
+  

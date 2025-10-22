@@ -1,0 +1,148 @@
+package com.sgch.hospital.service;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import com.sgch.hospital.external.prolog.PrologService;
+import com.sgch.hospital.model.entity.Cita;
+import com.sgch.hospital.model.entity.Cita.EstadoCita;
+import com.sgch.hospital.model.entity.Doctor;
+import com.sgch.hospital.model.entity.Paciente;
+import com.sgch.hospital.repository.CitaRepository;
+import com.sgch.hospital.repository.DoctorRepository;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class CitaService {
+
+    private final CitaRepository citaRepository;
+    private final DoctorRepository doctorRepository;
+    private final PrologService prologService; 
+    private final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+
+    public Cita agendarCita(Long doctorId, Paciente paciente, LocalDate fecha, String motivo, LocalTime hora)
+            throws Exception {
+
+        Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new Exception("Doctor no encontrado."));
+
+
+        LocalDateTime fechaHoraSeleccionada = fecha.atTime(hora);
+        String horaStr = hora.format(timeFormatter); 
+
+        List<String> horariosDisponibles = obtenerHorariosDisponibles(doctorId, fecha);
+
+
+
+        if (!horariosDisponibles.contains(horaStr)) {
+
+            throw new IllegalArgumentException(
+                    "La hora seleccionada (" + horaStr
+                            + ") no está disponible, está fuera de horario, o se solapa con otra cita.");
+        }
+        Cita nuevaCita = new Cita();
+        nuevaCita.setDoctor(doctor);
+        nuevaCita.setPaciente(paciente);
+        nuevaCita.setFechaHora(fechaHoraSeleccionada); 
+        nuevaCita.setMotivo(motivo);
+        nuevaCita.setEstado(Cita.EstadoCita.CONFIRMADA);
+
+
+        return citaRepository.save(nuevaCita);
+    }
+
+    public List<Cita> obtenerCitasPorPaciente(Long pacienteId) {
+        return citaRepository.findByPacienteId(pacienteId);
+    }
+
+    // Nuevo método para que el Doctor vea su agenda
+    public List<Cita> obtenerCitasPorDoctor(Long doctorId) throws Exception {
+        Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new Exception("Doctor no encontrado para agenda."));
+
+        // Retorna solo las citas pendientes para la agenda
+        return citaRepository.findAll()
+                .stream()
+                .filter(c -> c.getDoctor().getId().equals(doctorId) && c.getEstado() == Cita.EstadoCita.PENDIENTE)
+                .toList(); // Uso de stream (paradigma funcional) para filtrar eficientemente
+    }
+
+    public List<Cita> obtenerTodasLasCitas() {
+        return citaRepository.findAll(); // Uso estándar de JPA
+    }
+
+    public List<String> obtenerHorariosDisponibles(Long doctorId, LocalDate fecha) throws Exception {
+
+        // 1. Obtener la Entidad Doctor (OO)
+        Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new Exception("Doctor no encontrado."));
+
+        // 2. Obtener los hechos (citas ocupadas) del día (OO)
+        List<Cita> citasOcupadas = citaRepository.findByDoctorAndFechaHoraBetween(
+                doctor,
+                fecha.atStartOfDay(),
+                fecha.atTime(LocalTime.MAX));
+
+        prologService.limpiarHechosTemporales();
+        prologService.assertFacts(doctor, citasOcupadas); // Inyectamos los hechos
+
+        return prologService.obtenerTodasHorasDisponibles(doctor, fecha);
+    }
+
+    public Cita cancelarCita(Long citaId) throws Exception {
+        Cita cita = citaRepository.findById(citaId)
+                .orElseThrow(() -> new Exception("Cita no encontrada."));
+
+        if (cita.getEstado() == EstadoCita.REALIZADA) {
+            throw new IllegalArgumentException("No se puede cancelar una cita ya realizada.");
+        }
+
+        cita.setEstado(EstadoCita.CANCELADA);
+        return citaRepository.save(cita);
+    }
+
+    public Cita postergarCita(Long citaId, Long nuevoDoctorId, LocalDate nuevaFecha, String nuevoMotivo,LocalTime nuevaHora)
+            throws Exception {
+
+        // 1. Cancelar la cita antigua (OO)
+        Cita citaAntigua = cancelarCita(citaId);
+
+        // 2. Obtener el paciente para la nueva cita
+        Paciente paciente = citaAntigua.getPaciente();
+
+        // 3. Agendar una nueva cita (Lógico/Prolog)
+        return agendarCita(nuevoDoctorId, paciente, nuevaFecha, nuevoMotivo,nuevaHora);
+    }
+
+    public List<Cita> buscarCitas(Long doctorId, LocalDate fecha) {
+
+        // Si se proporciona un día, definimos el rango de tiempo (inicio del día a fin
+        // del día)
+        LocalDateTime startOfDay = (fecha != null) ? fecha.atStartOfDay() : null;
+        LocalDateTime endOfDay = (fecha != null) ? fecha.atTime(LocalTime.MAX) : null;
+
+        if (doctorId != null && fecha != null) {
+            // 1. Buscar por Doctor Y Día
+            return citaRepository.findByDoctorIdAndFechaHoraBetween(doctorId, startOfDay, endOfDay);
+
+        } else if (doctorId != null) {
+            // 2. Buscar solo por Doctor
+            return citaRepository.findByDoctorId(doctorId);
+
+        } else if (fecha != null) {
+            // 3. Buscar solo por Día
+            return citaRepository.findByFechaHoraBetween(startOfDay, endOfDay);
+
+        } else {
+            // 4. Si no hay filtros, devolver todas las citas (para administradores)
+            return citaRepository.findAll();
+        }
+    }
+}
