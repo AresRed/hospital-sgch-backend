@@ -38,6 +38,6 @@ spring:
           time_zone: UTC
 
 jwt:
-  secret: RXN0YUVzTWlDbGF2ZVNlY3JldGFTdXBlckxhcmdhWVNlZ3VyYVBhcmFFbEhvc3BpdGFsU0dDSg # Clave secreta para firmar tokens
+  secret:  ${JWT_SECRET}
   expiration: 3600000 # 1 hora
   
