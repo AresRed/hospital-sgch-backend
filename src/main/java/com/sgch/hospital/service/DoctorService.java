@@ -25,8 +25,7 @@ public class DoctorService {
         
         Doctor doctor = findDoctorById(updateDto.getDoctorId());
         
-        // 1. **VALIDACIÓN DE HORARIOS (Lógica OO)**
-        // Asegura que la hora de inicio sea anterior a la de fin.
+    
         LocalTime inicio = LocalTime.parse(updateDto.getHorarioAtencionInicio());
         LocalTime fin = LocalTime.parse(updateDto.getHorarioAtencionFin());
         
@@ -35,7 +34,6 @@ public class DoctorService {
                                                ") no puede ser posterior a la hora de fin (" + updateDto.getHorarioAtencionFin() + ").");
         }
         
-        // 2. **PERSISTENCIA (OO)**
         doctor.setHorarioAtencionInicio(updateDto.getHorarioAtencionInicio());
         doctor.setHorarioAtencionFin(updateDto.getHorarioAtencionFin());
         doctor.setDuracionCitaMinutos(updateDto.getDuracionCitaMinutos());

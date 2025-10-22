@@ -29,14 +29,14 @@ public class DataLoader implements CommandLineRunner {
     private final PacienteRepository pacienteRepository;
     @Override
     public void run(String... args) throws Exception {
-        // Ejecutamos la lógica de inicialización solo si la base de datos está vacía
+        
         if (usuarioRepository.count() == 0) {
             System.out.println("Inicializando datos de roles de prueba...");
             
-            // Contraseña común para simplificar las pruebas
+        
             String testPassword = passwordEncoder.encode("test1234"); 
             
-            // 1. Crear Administrador
+        
             Administrador admin = new Administrador();
             admin.setDni("00000001A");
             admin.setNombre("Super");
@@ -46,7 +46,7 @@ public class DataLoader implements CommandLineRunner {
             admin.setRol(Rol.ADMINISTRADOR);
             usuarioRepository.save(admin);
             
-            // 2. Crear Doctor
+        
             Doctor doctor = new Doctor();
             doctor.setDni("00000002B");
             doctor.setNombre("Dr.");
@@ -57,7 +57,7 @@ public class DataLoader implements CommandLineRunner {
             doctor.setEspecialidad("Cardiologia");
             usuarioRepository.save(doctor);
             
-            // 3. Crear Paciente
+        
             Paciente paciente = new Paciente();
             paciente.setDni("00000003C");
             paciente.setNombre("Juan");
@@ -72,7 +72,7 @@ public class DataLoader implements CommandLineRunner {
         if (doctor2 != null) {
             System.out.println("Cargando horario inicial para Doctor 2...");
             
-            // Valores iniciales que el Administrador suele establecer
+        
             doctor2.setHorarioAtencionInicio("09:00");
             doctor2.setHorarioAtencionFin("18:00");
             doctor2.setDuracionCitaMinutos(20); // Citas de 20 minutos por defecto
@@ -81,16 +81,16 @@ public class DataLoader implements CommandLineRunner {
             System.out.println("Doctor 2 horario: 09:00 a 18:00, citas de 20 minutos.");
         }
         
-        // 3. REGISTRAR UNA CITA DE PRUEBA (Bloqueo para Prolog)
+        
         Doctor doctorBloqueo = doctorRepository.findById(2L).orElse(null);
         Paciente pacienteBloqueo = pacienteRepository.findById(3L).orElse(null); // Asumiendo ID 3 es un Paciente
 
         if (doctorBloqueo != null && pacienteBloqueo != null) {
             
-            // Elegimos una fecha y hora futura para la cita inicial
+        
             LocalDateTime fechaHoraCitaInicial = LocalDateTime.now()
-                .plusDays(7) // La cita será dentro de 7 días
-                .withHour(10) // A las 10:00 AM
+                .plusDays(7) 
+                .withHour(10) 
                 .withMinute(0)
                 .withSecond(0)
                 .withNano(0);

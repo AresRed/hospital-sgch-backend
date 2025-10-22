@@ -24,8 +24,6 @@ import jakarta.servlet.http.HttpServletResponse;
 public class AuthTokenFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
 
-    // Usamos @Autowired en lugar de final/constructor ya que este Bean es creado
-    // manualmente
     @Autowired
     private JwtUtils jwtUtils;
 
@@ -44,7 +42,6 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                // Crea el token de autenticación de Spring Security
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
@@ -52,7 +49,6 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // Establece el usuario en el contexto de seguridad
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception e) {
@@ -62,14 +58,13 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    // Método de utilidad para extraer el token de la cabecera
     private String parseJwt(HttpServletRequest request) {
         String headerAuth = request.getHeader("Authorization");
         logger.debug("DEBUG FILTER: Cabecera Auth recibida: {}", headerAuth);
         if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
             String token = headerAuth.substring(7);
             logger.debug("DEBUG FILTER: Token JWT extraído: {}", token);
-            return token; // Retorna el token sin el prefijo "Bearer "
+            return token; 
          
         }
         return null;

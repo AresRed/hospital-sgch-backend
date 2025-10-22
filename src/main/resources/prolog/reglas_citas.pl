@@ -34,7 +34,6 @@ minutes_to_time(Minutes, Time) :-
 
 % generar_candidato_en_pasos(+Actual, +Limite, +Paso, -Candidato)
 % Predicado recursivo que genera valores desde 'Actual' hasta 'Limite' en incrementos de 'Paso'.
-% Es más eficiente que between/3 + mod/2 porque no genera valores intermedios.
 
 % Caso base: El valor actual es un candidato válido si no supera el límite.
 generar_candidato_en_pasos(Actual, Limite, _, Actual) :- 

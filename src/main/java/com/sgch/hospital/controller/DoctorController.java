@@ -24,16 +24,12 @@ public class DoctorController {
 
     private final CitaService citaService;
     private final UsuarioService usuarioService;
-    // private final ExpedienteService expedienteService; // Lo usaremos para el análisis con Python
 
     private Usuario getAuthenticatedUser() throws Exception {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return usuarioService.findByEmail(auth.getName());
     }
 
-    /**
-     * ENDPOINT: Ver mi agenda (citas pendientes)
-     */
     @GetMapping("/agenda")
     public ResponseEntity<?> obtenerMiAgenda() {
         try {

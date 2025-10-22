@@ -12,8 +12,6 @@ public class EmailServiceImpl implements EmailService{
 
     private final JavaMailSender mailSender;
 
-    // Aquí definirás el correo del remitente que debe ser configurado en application.properties/yml
-    // @Value("${spring.mail.username}") 
     private String fromEmail = "sgch.noreply@gmail.com"; 
     
     @Override
@@ -25,7 +23,6 @@ public class EmailServiceImpl implements EmailService{
         message.setSubject(subject);
         message.setText(text);
         
-        // El envío de correo es una OPERACIÓN IMPERATIVA
         mailSender.send(message); 
     }
 }

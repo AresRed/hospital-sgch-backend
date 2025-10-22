@@ -38,17 +38,11 @@ public class PacienteController {
     private final CitaService citaService;
     private final UsuarioService usuarioService;
 
-    // Método auxiliar para obtener el usuario autenticado (se usará en todos los
-    // controladores)
     private Usuario getAuthenticatedUser() throws Exception {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return usuarioService.findByEmail(auth.getName()); // 'auth.getName()' es el email en este caso
     }
 
-    /**
-     * ENDPOINT: Agendar una cita.
-     * Aquí se activa la lógica del Paradigma Lógico (Prolog)
-     */
     @PostMapping("/citas/agendar")
     public ResponseEntity<?> agendarCita(@RequestBody AgendarCitaRequest request) {
         try {
@@ -57,7 +51,6 @@ public class PacienteController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acceso denegado: Solo pacientes.");
             }
 
-            // Llama al servicio que delega en Prolog para encontrar el horario óptimo
             var nuevaCita = citaService.agendarCita(
                     request.getDoctorId(),
                     (Paciente) usuario,
@@ -71,9 +64,7 @@ public class PacienteController {
         }
     }
 
-    /**
-     * ENDPOINT: Ver citas del paciente.
-     */
+
     @GetMapping("/citas")
     public ResponseEntity<?> obtenerMisCitas() {
         try {
@@ -94,8 +85,6 @@ public class PacienteController {
             @RequestParam Long doctorId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         try {
-            // Aseguramos que el usuario esté logueado (Spring Security ya lo hizo)
-            // Y que el Doctor exista (lo verifica el service)
 
             List<String> horarios = citaService.obtenerHorariosDisponibles(doctorId, fecha);
 
@@ -116,10 +105,8 @@ public class PacienteController {
         try {
             Cita citaCancelada = citaService.cancelarCita(citaId);
 
-            // Retornamos la cita cancelada con su nuevo estado
             return ResponseEntity.ok(citaCancelada);
         } catch (IllegalArgumentException e) {
-            // Captura el error si intentan cancelar una cita ya realizada
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -133,15 +120,12 @@ public class PacienteController {
             @PathVariable Long citaId,
             @Valid @RequestBody CitaReprogramarRequest request) {
         try {
-            // El servicio maneja la lógica: cancelar la antigua y agendar la nueva usando
-            // Prolog
             Cita nuevaCita = citaService.postergarCita(
                     citaId,
                     request.getNuevoDoctorId(),
                     request.getNuevaFecha(),
                     request.getNuevoMotivo(),
                     request.getNuevaHora());
-            // Retornamos la nueva cita programada
             return ResponseEntity.ok(nuevaCita);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error al postergar la cita: " + e.getMessage());

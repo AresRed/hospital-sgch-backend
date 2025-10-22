@@ -20,26 +20,23 @@ import com.sgch.hospital.security.jwt.AuthTokenFilter;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
-@EnableMethodSecurity // Permite seguridad basada en anotaciones (@PreAuthorize)
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class WebSecurityConfig {
 
     private final UserDetailsServiceImpl userDetailsService;
     private final AuthEntryPointJwt unauthorizedHandler;
-    
-    // Inyección del filtro JWT (se creará más adelante)
+
     @Bean
     public AuthTokenFilter authenticationJwtTokenFilter() {
-      return new AuthTokenFilter();
+        return new AuthTokenFilter();
     }
 
-    // Bean para cifrar contraseñas (BCrypt)
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    
-    // Proveedor de autenticación que usa nuestro servicio de usuario y el cifrador
+
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
@@ -48,31 +45,26 @@ public class WebSecurityConfig {
         return authProvider;
     }
 
-    // Gestor de autenticación
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
-      return authConfig.getAuthenticationManager();
+        return authConfig.getAuthenticationManager();
     }
 
-    // Cadena de Filtros de Seguridad (Define qué URLs proteger y cómo)
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable()) // Deshabilitamos CSRF para APIs REST
-            .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler)) // Manejo de errores de autenticación
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Usamos JWT, no sesiones
-            .authorizeHttpRequests(auth -> 
-                auth.requestMatchers("/api/auth/**").permitAll() // Permitir registro y login sin autenticar
-                    .requestMatchers("/api/admin/**").hasAuthority("ADMINISTRADOR")
-                    .requestMatchers("/api/admin/horario-doctor").hasAuthority("ADMINISTRADOR")  // Solo Administradores
-                    .requestMatchers("/api/doctor/**").hasAnyAuthority("DOCTOR", "ADMINISTRADOR") // Doctores y Admins
-                    .anyRequest().authenticated() // Cualquier otra petición requiere autenticación
-            );
-        
+        http.csrf(csrf -> csrf.disable())
+                .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasAuthority("ADMINISTRADOR")
+                        .requestMatchers("/api/admin/horario-doctor").hasAuthority("ADMINISTRADOR")
+                        .requestMatchers("/api/doctor/**").hasAnyAuthority("DOCTOR", "ADMINISTRADOR")
+                        .anyRequest().authenticated());
+
         http.authenticationProvider(authenticationProvider());
-        
-        // Añadir el filtro JWT antes del filtro estándar
+
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
-        
+
         return http.build();
     }
 }

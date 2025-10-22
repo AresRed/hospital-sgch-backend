@@ -35,19 +35,15 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
 
-        // 1. Autenticar las credenciales
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
 
-        // 2. Establecer el contexto de seguridad y generar el JWT
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateJwtToken(authentication);
 
-        // 3. Obtener detalles del usuario para la respuesta
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         try{  Usuario usuario = usuarioService.findByEmail(userDetails.getUsername()); 
 
-            // 4. Devolver el JWT y los datos del usuario al cliente
             return ResponseEntity.ok(new JwtResponse(
                 jwt,
                 usuario.getId(),
@@ -65,7 +61,6 @@ public class AuthController {
     @PostMapping("/registro")
     public ResponseEntity<?> registerUser(@RequestBody RegistroRequest registroRequest) {
         try {
-            // Convertir DTO a la entidad Usuario y determinar el rol
             Usuario nuevoUsuario = usuarioService.convertirYRegistrar(registroRequest); // Asumimos un método auxiliar para esto
             
             return ResponseEntity.ok("Usuario registrado exitosamente. Se ha enviado un correo de verificación.");
@@ -73,14 +68,10 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Error al registrar usuario: " + e.getMessage());
         }
     }
-    // Pendiente: Endpoint para verificar el correo /api/auth/verify?token=...
 
     @PostMapping("/logout")
     public ResponseEntity<?> logoutUser() {
-        // En una implementación avanzada, podrías añadir el token a una 'lista negra' 
-        // (blacklist) de Redis para invalidarlo inmediatamente antes de que expire.
-        
-        // Para este proyecto, simplemente confirmamos la acción al cliente.
+
         return ResponseEntity
             .status(HttpStatus.OK)
             .body("Sesión cerrada exitosamente. Por favor, elimine su token JWT.");

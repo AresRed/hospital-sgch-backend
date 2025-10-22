@@ -27,12 +27,10 @@ public class UserDetailsServiceImpl implements UserDetailsService{
         Usuario usuario = usuarioRepository.findByEmail(email)
             .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
         
-        // Construimos la lista de roles/permisos
         List<GrantedAuthority> authorities = Collections.singletonList(
             new SimpleGrantedAuthority(usuario.getRol().name())
         );
         
-        // Retornamos el objeto UserDetails que Spring Security necesita
         return new User(
             usuario.getEmail(),
             usuario.getPassword(),

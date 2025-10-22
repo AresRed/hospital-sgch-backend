@@ -33,18 +33,14 @@ import lombok.RequiredArgsConstructor;
 public class AdminController {
 
     private final UsuarioService usuarioService;
-    private final CitaService citaService; // Necesario para obtener todos los datos
+    private final CitaService citaService;
     private final PythonAnalyticsService analyticsService;
     private final DoctorService doctorService;
 
-    /**
-     * ENDPOINT: Registro de personal (Doctor o Admin)
-     */
     @PostMapping("/personal/registrar")
     public ResponseEntity<?> registrarPersonal(@RequestBody RegistroRequest request) {
         try {
-            // El servicio maneja la lógica de crear el tipo de usuario correcto
-            // (Doctor/Admin)
+
             usuarioService.convertirYRegistrar(request);
             return ResponseEntity.ok("Personal registrado y correo de verificación enviado.");
         } catch (Exception e) {
@@ -55,7 +51,6 @@ public class AdminController {
     @GetMapping("/estadisticas/cancelaciones")
     public ResponseEntity<?> getEstadisticasCancelaciones() {
         try {
-            // 1. Obtener todos los datos de citas (o un subconjunto relevante)
             var todasLasCitas = citaService.obtenerTodasLasCitas();
 
             if (todasLasCitas.isEmpty()) {
@@ -64,16 +59,11 @@ public class AdminController {
 
             String outputFileName = "reporte_cancelaciones_" + System.currentTimeMillis() + ".png";
 
-            // 2. Delegar la manipulación y el análisis a Python (PARADIGMA
-            // VECTORIAL/FUNCIONAL)
             String rutaImagen = analyticsService.generarGraficoCancelaciones(
                     todasLasCitas,
                     outputFileName);
 
-            // 3. Devolver la ruta donde Angular puede acceder a la imagen generada
             return ResponseEntity.ok("Gráfico generado con éxito. Ruta: " + rutaImagen);
-
-            // NOTA: En un sistema real, aquí se devolvería el archivo binario de la imagen.
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -88,16 +78,14 @@ public class AdminController {
             Doctor doctorActualizado = doctorService.actualizarHorarioDoctor(updateDto);
             return ResponseEntity.ok(doctorActualizado);
         } catch (IllegalArgumentException e) {
-            // Maneja el error de validación de hora de inicio vs hora de fin
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            // Maneja error de Doctor no encontrado
             return ResponseEntity.internalServerError().body("Error al actualizar el horario: " + e.getMessage());
         }
     }
 
     @GetMapping("/citas/buscar")
-    @PreAuthorize("hasAuthority('ADMINISTRADOR')") // Solo un Admin puede ver todas las citas
+    @PreAuthorize("hasAuthority('ADMINISTRADOR')")
     public ResponseEntity<List<Cita>> buscarCitas(
             // Parámetros opcionales
             @RequestParam(required = false) Long doctorId,
@@ -105,7 +93,7 @@ public class AdminController {
         List<Cita> citas = citaService.buscarCitas(doctorId, fecha);
 
         if (citas.isEmpty()) {
-            return ResponseEntity.noContent().build(); // Código 204 No Content si no se encuentran
+            return ResponseEntity.noContent().build();
         }
 
         return ResponseEntity.ok(citas);
