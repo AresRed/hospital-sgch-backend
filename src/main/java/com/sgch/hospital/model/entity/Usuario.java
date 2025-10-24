@@ -38,12 +38,16 @@ public class Usuario {
     private String apellido;
     private String telefono;
     
+    private String direccion;
     // Spring Security usará este campo para la gestión de roles
     @Enumerated(EnumType.STRING)
     private Rol rol;
+
 
     // Enum para los roles
     public enum Rol {
         PACIENTE, DOCTOR, ADMINISTRADOR
     }
+
+
 }

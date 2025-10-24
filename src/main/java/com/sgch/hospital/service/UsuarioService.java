@@ -3,7 +3,9 @@ package com.sgch.hospital.service;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.sgch.hospital.model.DTO.PacienteUpdateDTO;
 import com.sgch.hospital.model.DTO.RegistroRequest;
+import com.sgch.hospital.model.entity.Paciente;
 import com.sgch.hospital.model.entity.Usuario;
 import com.sgch.hospital.model.entity.Usuario.Rol;
 import com.sgch.hospital.repository.UsuarioRepository;
@@ -61,5 +63,37 @@ public class UsuarioService {
         usuario.setPassword(req.getPassword());
 
         return registrarNuevoUsuario(usuario, rol);
+    }
+
+    public void actualizarPerfilPaciente(Long pacienteId, PacienteUpdateDTO dto) throws Exception {
+        
+        // 1. Encontrar la entidad Paciente por ID
+        Usuario usuario = usuarioRepository.findById(pacienteId)
+            .orElseThrow(() -> new Exception("Usuario no encontrado."));
+        
+        // 2. Validación de tipo (Asegurarse de que el usuario es un Paciente)
+        if (!(usuario instanceof Paciente)) {
+            throw new Exception("El ID de usuario no corresponde a un Paciente.");
+        }
+        
+        // 3. Casteo a la entidad Paciente
+        Paciente paciente = (Paciente) usuario; 
+
+        // 4. Aplicar los cambios del DTO a la entidad
+        // Los setters son generados por Lombok (@Data en la entidad Paciente)
+        paciente.setNombre(dto.getNombre());
+        paciente.setEmail(dto.getEmail());
+        
+        // Campos opcionales (debe manejar valores nulos si el DTO lo permite)
+        if (dto.getTelefono() != null) {
+            paciente.setTelefono(dto.getTelefono());
+        }
+        if (dto.getDireccion() != null) {
+            paciente.setDireccion(dto.getDireccion());
+        }
+        
+        // 5. El cambio se persiste automáticamente al finalizar la transacción @Transactional.
+        // Si no usas @Transactional, necesitarías: usuarioRepository.save(paciente);
+        usuarioRepository.save(paciente);
     }
 }

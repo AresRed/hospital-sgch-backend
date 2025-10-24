@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Receta Médica</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .hospital-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c5aa0;
+            margin-bottom: 5px;
+        }
+        .document-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .patient-info, .doctor-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #2c5aa0;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .medication-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .medication-table th, .medication-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .medication-table th {
+            background-color: #2c5aa0;
+            color: white;
+            font-weight: bold;
+        }
+        .medication-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .diagnosis-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        .recommendations-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+        .signature-section {
+            margin-top: 30px;
+            text-align: right;
+        }
+        .signature-line {
+            border-bottom: 1px solid #333;
+            width: 200px;
+            margin-left: auto;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="hospital-name" th:text="${hospital}">Hospital SGCH</div>
+        <div class="document-title">RECETA MÉDICA</div>
+        <div>Fecha: <span th:text="${fechaFormateada}">01/01/2024 10:30</span></div>
+    </div>
+
+    <!-- Información del Paciente -->
+    <div class="patient-info">
+        <div class="section-title">DATOS DEL PACIENTE</div>
+        <p><strong>Nombre:</strong> <span th:text="${paciente.nombre + ' ' + paciente.apellido}">Juan Pérez</span></p>
+        <p><strong>DNI:</strong> <span th:text="${paciente.dni}">12345678</span></p>
+        <p><strong>Teléfono:</strong> <span th:text="${paciente.telefono}">+51 999 999 999</span></p>
+        <p><strong>Seguro Médico:</strong> <span th:text="${paciente.seguroMedico}">ESSALUD</span></p>
+    </div>
+
+    <!-- Información del Doctor -->
+    <div class="doctor-info">
+        <div class="section-title">DATOS DEL MÉDICO</div>
+        <p><strong>Dr./Dra.:</strong> <span th:text="${doctor.nombre + ' ' + doctor.apellido}">Dr. María González</span></p>
+        <p><strong>Especialidad:</strong> <span th:text="${doctor.especialidad}">Medicina General</span></p>
+        <p><strong>CMP:</strong> <span th:text="${doctor.dni}">12345</span></p>
+    </div>
+
+    <!-- Diagnóstico -->
+    <div class="diagnosis-section">
+        <div class="section-title">DIAGNÓSTICO</div>
+        <p th:text="${notaMedica.diagnostico}">Resfriado común con síntomas leves</p>
+    </div>
+
+    <!-- Medicamentos -->
+    <div class="section-title">MEDICAMENTOS PRESCRITOS</div>
+    <table class="medication-table">
+        <thead>
+            <tr>
+                <th>Medicamento</th>
+                <th>Dosis</th>
+                <th>Instrucciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="detalle : ${receta.detalles}">
+                <td th:text="${detalle.nombreMedicamento}">Paracetamol</td>
+                <td th:text="${detalle.dosis}">500mg</td>
+                <td th:text="${detalle.instrucciones}">Tomar cada 8 horas por 5 días</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Recomendaciones -->
+    <div class="recommendations-section">
+        <div class="section-title">RECOMENDACIONES</div>
+        <p th:text="${notaMedica.recomendaciones}">Descansar adecuadamente, beber abundante líquido y evitar cambios bruscos de temperatura.</p>
+    </div>
+
+    <!-- Firma -->
+    <div class="signature-section">
+        <div class="signature-line"></div>
+        <p><strong>Firma del Médico</strong></p>
+        <p th:text="${doctor.nombre + ' ' + doctor.apellido}">Dr. María González</p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>Esta receta es válida por 30 días desde la fecha de emisión.</p>
+        <p>Hospital SGCH - Sistema de Gestión de Citas Hospitalarias</p>
+        <p>Para consultas: contacto@hospital-sgch.com</p>
+    </div>
+</body>
+</html>

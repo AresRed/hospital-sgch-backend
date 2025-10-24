@@ -4,7 +4,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -21,10 +23,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.sgch.hospital.model.DTO.AgendarCitaRequest;
 import com.sgch.hospital.model.DTO.CitaReprogramarRequest;
+import com.sgch.hospital.model.DTO.PacienteUpdateDTO;
 import com.sgch.hospital.model.entity.Cita;
 import com.sgch.hospital.model.entity.Paciente;
+import com.sgch.hospital.model.entity.Receta;
 import com.sgch.hospital.model.entity.Usuario;
 import com.sgch.hospital.service.CitaService;
+import com.sgch.hospital.service.ExpedienteService;
+import com.sgch.hospital.service.RecetaPdfService;
 import com.sgch.hospital.service.UsuarioService;
 
 import jakarta.validation.Valid;
@@ -37,6 +43,8 @@ public class PacienteController {
 
     private final CitaService citaService;
     private final UsuarioService usuarioService;
+    private final ExpedienteService expedienteService;
+    private final RecetaPdfService recetaPdfService;
 
     private Usuario getAuthenticatedUser() throws Exception {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -63,7 +71,6 @@ public class PacienteController {
             return ResponseEntity.badRequest().body("Error al agendar cita: " + e.getMessage());
         }
     }
-
 
     @GetMapping("/citas")
     public ResponseEntity<?> obtenerMisCitas() {
@@ -129,6 +136,131 @@ public class PacienteController {
             return ResponseEntity.ok(nuevaCita);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error al postergar la cita: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/historial/ultima-receta")
+    public ResponseEntity<?> obtenerUltimaReceta() {
+        try {
+            Usuario usuario = getAuthenticatedUser();
+
+            if (!(usuario instanceof Paciente)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acceso denegado: Solo pacientes.");
+            }
+
+            // La lógica en ExpedienteService busca la receta más reciente
+            Receta receta = expedienteService.obtenerUltimaReceta(usuario.getId());
+
+            return ResponseEntity.ok(receta);
+        } catch (Exception e) {
+            // Si no hay expediente o receta en el historial
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/perfil")
+    public ResponseEntity<?> actualizarPerfil(@Valid @RequestBody PacienteUpdateDTO dto) {
+        try {
+            Usuario usuario = getAuthenticatedUser();
+            // Llamada al servicio que actualiza en la DB
+            usuarioService.actualizarPerfilPaciente(usuario.getId(), dto);
+            return ResponseEntity.ok("Perfil actualizado correctamente.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al actualizar perfil: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/receta/{recetaId}/pdf")
+    @PreAuthorize("hasAuthority('PACIENTE')")
+    public ResponseEntity<?> descargarRecetaPdf(@PathVariable Long recetaId) {
+        try {
+            Usuario usuario = getAuthenticatedUser();
+            if (!(usuario instanceof Paciente)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acceso denegado: Solo pacientes.");
+            }
+
+            Paciente paciente = (Paciente) usuario;
+            
+            // Obtener la receta
+            Receta receta = expedienteService.obtenerRecetaPorId(recetaId);
+            
+            // Validar que la receta pertenece al paciente autenticado
+            if (!receta.getNotaMedica().getExpediente().getPaciente().getId().equals(paciente.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("No tiene permisos para acceder a esta receta.");
+            }
+
+            // Generar PDF
+            byte[] pdfBytes = recetaPdfService.generarPdfReceta(receta);
+
+            // Configurar headers para descarga
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", 
+                "mi_receta_" + receta.getId() + ".pdf");
+
+            return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al generar PDF: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/receta/{recetaId}/html")
+    @PreAuthorize("hasAuthority('PACIENTE')")
+    public ResponseEntity<?> verRecetaHtml(@PathVariable Long recetaId) {
+        try {
+            Usuario usuario = getAuthenticatedUser();
+            if (!(usuario instanceof Paciente)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acceso denegado: Solo pacientes.");
+            }
+
+            Paciente paciente = (Paciente) usuario;
+            
+            // Obtener la receta
+            Receta receta = expedienteService.obtenerRecetaPorId(recetaId);
+            
+            // Validar que la receta pertenece al paciente autenticado
+            if (!receta.getNotaMedica().getExpediente().getPaciente().getId().equals(paciente.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("No tiene permisos para acceder a esta receta.");
+            }
+
+            // Generar HTML
+            String html = recetaPdfService.generarHtmlReceta(receta);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_HTML);
+
+            return ResponseEntity.ok()
+                .headers(headers)
+                .body(html);
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al generar vista HTML: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/recetas")
+    @PreAuthorize("hasAuthority('PACIENTE')")
+    public ResponseEntity<?> obtenerMisRecetas() {
+        try {
+            Usuario usuario = getAuthenticatedUser();
+            if (!(usuario instanceof Paciente)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acceso denegado: Solo pacientes.");
+            }
+
+            Paciente paciente = (Paciente) usuario;
+            
+            // Obtener todas las recetas del paciente
+            List<Receta> recetas = expedienteService.obtenerTodasLasRecetasPorPaciente(paciente.getId());
+            
+            return ResponseEntity.ok(recetas);
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al obtener recetas: " + e.getMessage());
         }
     }
 }

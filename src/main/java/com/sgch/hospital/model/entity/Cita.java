@@ -43,7 +43,7 @@ public class Cita {
     
     // Enum para el estado de la cita
     public enum EstadoCita {
-        PENDIENTE, CONFIRMADA, CANCELADA, REALIZADA
+        PENDIENTE, CONFIRMADA, CANCELADA, REALIZADA, AUSENTE
     }
 
 }

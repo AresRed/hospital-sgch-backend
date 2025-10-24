@@ -1,118 +1,86 @@
 % =========================================================
-% DECLARACIÓN DE DINÁMICOS
+% DECLARACIÓN DE DINÁMICOS (Hechos inyectados por Java)
 % =========================================================
-% Declaramos que estos predicados pueden ser modificados (assertz/retractall) 
-% por el código Java en tiempo de ejecución.
 
-:- dynamic cita_temporal/4.
-:- dynamic doctor_temporal/5.
+% Declaramos que estos predicados serán modificados por Java (assertz/retractall).
 
-% doctor_temporal(ID, Especialidad, DuracionCita_Minutos, HoraInicio_Str, HoraFin_Str).
-% cita_temporal(DoctorID, Fecha_Str, HoraInicio_Str, Duracion_Minutos).
+:- dynamic cita_reservada_temp/4.  % (ID_Doctor, Fecha_Str, HoraInicio_Str, Duracion_Min)
+:- dynamic info_doctor/5.          % (ID_Doctor, Especialidad, Duracion_Min, HoraInicio_Str, HoraFin_Str)
 
 
 % =========================================================
-% REGLAS DE TIEMPO (Auxiliares)
+% REGLAS DE TIEMPO (Auxiliares para la conversión de HH:MM)
 % =========================================================
 
-% time_to_minutes(+TimeStr, -Minutes)
-% Convierte una hora HH:MM a minutos desde medianoche.
-time_to_minutes(Time, Minutes) :- 
-    atom_chars(Time, [H1, H2, ':', M1, M2]), 
-    number_chars(Hours, [H1, H2]), 
+% time_to_minutes(+TiempoStr, -Minutos)
+time_to_minutes(Tiempo, Minutos) :- 
+    atom_chars(Tiempo, [H1, H2, ':', M1, M2]), 
+    number_chars(Horas, [H1, H2]), 
     number_chars(Mins, [M1, M2]), 
-    Minutes is Hours * 60 + Mins.
+    Minutos is Horas * 60 + Mins.
 
-% minutes_to_time(+Minutes, -TimeStr)
-% Convierte minutos desde medianoche a formato HH:MM.
-minutes_to_time(Minutes, Time) :- 
-    Hours is Minutes // 60, 
-    Mins is Minutes mod 60,
-    % El formato garantiza que sea de dos dígitos (ej: 09:05)
-    format(atom(Time), '~`0t~d~2|:~`0t~d~2|', [Hours, Mins]).
+% minutes_to_time(+Minutos, -TiempoStr)
+minutes_to_time(Minutos, Tiempo) :- 
+    Horas is Minutos // 60, 
+    Mins is Minutos mod 60,
+    % Formatea a dos dígitos (ej: 09:05)
+    format(atom(Tiempo), '~`0t~d~2|:~`0t~d~2|', [Horas, Mins]).
 
-
-% generar_candidato_en_pasos(+Actual, +Limite, +Paso, -Candidato)
-% Predicado recursivo que genera valores desde 'Actual' hasta 'Limite' en incrementos de 'Paso'.
-
-% Caso base: El valor actual es un candidato válido si no supera el límite.
-generar_candidato_en_pasos(Actual, Limite, _, Actual) :- 
-    Actual =< Limite.
-
-% Caso recursivo: Genera el siguiente candidato y continúa la búsqueda.
-generar_candidato_en_pasos(Actual, Limite, Paso, Candidato) :-
-    Actual =< Limite,
-    Siguiente is Actual + Paso,
-    generar_candidato_en_pasos(Siguiente, Limite, Paso, Candidato).
 
 % =========================================================
-% REGLAS DE INTERVALOS Y OCUPACIÓN
+% REGLAS DE INTERVALOS Y OCUPACIÓN (Restricciones)
 % =========================================================
 
-% intervalo_cita(+DoctorID, +Fecha, +HoraInicio, -HoraFin)
-% Calcula la hora de fin de una cita basándose en la duración del doctor.
-intervalo_cita(DoctorID, _Fecha, HoraInicio, HoraFin) :-
-    % Obtener la duración de la cita del doctor (del hecho temporal)
-    doctor_temporal(DoctorID, _, DuracionMinutos, _, _),
-    
-    time_to_minutes(HoraInicio, MinutosInicio),
-    
-    MinutosFin is MinutosInicio + DuracionMinutos,
-    
-    minutes_to_time(MinutosFin, HoraFin).
-
-
-% horario_ocupado(+DoctorID, +FechaCandidata, +HoraCandidata, +DuracionCita)
-% Verifica si una hora candidata se solapa con una cita ya reservada.
-horario_ocupado(DoctorID, Fecha, HoraCandidata, DuracionCita) :-
+% horario_ocupado(+ID_Doctor, +FechaCandidata, +HoraCandidata, +DuracionCita)
+% Verifica si una hora candidata se solapa con cualquier cita ya reservada (hecho dinámico).
+horario_ocupado(ID_Doctor, Fecha, HoraCandidata, DuracionCita) :-
     % 1. Buscar una cita ya reservada en esa Fecha (usando el predicado dinámico)
-    cita_temporal(DoctorID, Fecha, CitaInicio, _DuracionReservada),
+    cita_reservada_temp(ID_Doctor, Fecha, CitaInicio, _DuracionReservada),
     
-    % 2. Calcular el intervalo de la cita reservada
-    intervalo_cita(DoctorID, Fecha, CitaInicio, CitaFin),
+    % 2. Calcular el Fin de la cita reservada (usando la duración del doctor)
+    time_to_minutes(CitaInicio, ReservadaMinInicio),
+    info_doctor(ID_Doctor, _, DuracionMinutos, _, _),
+    ReservadaMinFin is ReservadaMinInicio + DuracionMinutos,
     
-    % 3. Determinar los límites de tiempo en minutos
+    % 3. Determinar el intervalo de la hora candidata
     time_to_minutes(HoraCandidata, CandidataMinInicio),
     CandidataMinFin is CandidataMinInicio + DuracionCita,
     
-    time_to_minutes(CitaInicio, ReservadaMinInicio),
-    time_to_minutes(CitaFin, ReservadaMinFin),
-    
-    % 4. Comprobar la superposición (intersección de intervalos)
+    % 4. Comprobar la superposición (Lógica de Intersección de Intervalos)
     (
-        % El inicio de la candidata está antes del fin de la reservada
-        CandidataMinInicio < ReservadaMinFin,
-        % Y el fin de la candidata está después del inicio de la reservada
-        CandidataMinFin > ReservadaMinInicio
+        CandidataMinInicio < ReservadaMinFin,  % El inicio de la nueva cita choca con el fin de la reservada
+        CandidataMinFin > ReservadaMinInicio  % El fin de la nueva cita choca con el inicio de la reservada
     ).
 
 
 % =========================================================
-% REGLA PRINCIPAL: BÚSQUEDA DE HORARIO
+% REGLA PRINCIPAL: BÚSQUEDA DE HUECOS LIBRES
 % =========================================================
 
-% horario_optimo(+DoctorID, +Especialidad, +FechaBase, -HorarioDisponible)
-% Usa backtracking para encontrar el primer horario disponible que satisfaga todas las restricciones.
-horario_optimo(DoctorID, Especialidad, FechaBase, HorarioDisponible) :-
+% horario_optimo(+ID_Doctor, +Especialidad, +Fecha, -HorarioDisponible)
+% Genera y verifica todos los candidatos usando el incremento de la Duración.
+horario_optimo(ID_Doctor, _Especialidad, Fecha, HorarioDisponible) :-
     
     % 1. Obtener límites y duración del doctor (hecho inyectado por Java)
-    doctor_temporal(DoctorID, Especialidad, Duracion, HoraInicioStr, HoraFinStr),
+    info_doctor(ID_Doctor, _, Duracion, HoraInicioStr, HoraFinStr),
     
     % 2. Convertir límites a minutos
     time_to_minutes(HoraInicioStr, MinInicio),
     time_to_minutes(HoraFinStr, MinFin),
     
-    % 3. Generar una secuencia de horas candidatas
-    % Se debe calcular el límite superior ANTES de llamar a between/3.
-    LimiteSuperior is MinFin - Duracion,
-    generar_candidato_en_pasos(MinInicio, LimiteSuperior, Duracion, MinCandidato),
+    % 3. Generar una secuencia de horas candidatas en pasos de "Duracion"
+    % El rango superior garantiza que la cita quepa completamente.
+    LimiteSuperior is MinFin - Duracion, 
     
+    % Generamos el candidato en minutos con el incremento de Duracion
+    between(MinInicio, LimiteSuperior, MinCandidato),
+    0 is (MinCandidato - MinInicio) mod Duracion, % Asegura que el candidato cae en un paso múltiplo de Duracion
+
     % 4. Convertir el candidato a formato HH:MM
     minutes_to_time(MinCandidato, HoraCandidata),
 
-    % 5. Verificar que el horario NO esté ocupado (¡Uso de Negación por Falla: \+!)
-    % Si 'horario_ocupado' falla (no hay hechos que lo hagan verdadero), el horario es libre.
-    \+ horario_ocupado(DoctorID, FechaBase, HoraCandidata, Duracion),
+    % 5. Verificar que el horario NO esté ocupado (Negación por Falla: \+!)
+    \+ horario_ocupado(ID_Doctor, Fecha, HoraCandidata, Duracion),
     
-    % 6. Unificar la variable de salida (HorarioDisponible) con la HoraCandidata encontrada
-    HorarioDisponible = HoraCandidata.
+    % 6. Unificar la salida
+    HorarioDisponible = HoraCandidata.---
