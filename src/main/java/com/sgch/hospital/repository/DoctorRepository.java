@@ -9,7 +9,7 @@ import com.sgch.hospital.model.entity.Doctor;
 
 public interface DoctorRepository extends JpaRepository<Doctor, Long> {
 
-    List<Doctor> findByEspecialidad(String especialidad);
+     List<Doctor> findByEspecialidad_Nombre(String nombreEspecialidad);
 
     Optional<Doctor> findByDni(String dni);
 }

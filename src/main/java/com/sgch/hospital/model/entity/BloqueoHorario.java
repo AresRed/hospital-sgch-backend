@@ -1,10 +1,9 @@
 package com.sgch.hospital.model.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -16,25 +15,25 @@ import lombok.NoArgsConstructor;
 @Entity
 @Data
 @NoArgsConstructor
-public class DetalleReceta {
-
+public class BloqueoHorario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Muchos a Uno con la Receta
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "receta_id", nullable = false)
-    private Receta receta;
+    // Relación Muchos a Uno con el Doctor que tendrá el bloqueo
+    @ManyToOne
+    @JoinColumn(name = "doctor_id", nullable = false)
+    private Doctor doctor;
 
     @Column(nullable = false)
-    private String nombreMedicamento;
+    private LocalDateTime inicioBloqueo;
 
     @Column(nullable = false)
-    private String dosis; // Ej: "500 mg cada 8 horas"
+    private LocalDateTime finBloqueo;
     
-    @Column(columnDefinition = "TEXT")
-    private String instrucciones;
+    private String motivo; // Ej: "Almuerzo", "Congreso", "Día Libre"
+    
+    // Un campo que indica si el bloqueo es recurrente (ej., cada martes)
+    private boolean esRecurrente = false;
 }

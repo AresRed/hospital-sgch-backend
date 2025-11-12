@@ -1,6 +1,9 @@
 package com.sgch.hospital.model.entity;
 
+import java.time.LocalDateTime; // Importación añadida
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -31,6 +34,9 @@ public class Expediente {
     private String grupoSanguineo;
     private String observacionesGenerales;
     
+    private LocalDateTime fechaCreacion; // Añadido
+
+    @JsonIgnore
     @OneToMany(mappedBy = "expediente", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<NotaMedica> notas;
 }

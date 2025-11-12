@@ -87,7 +87,7 @@ public class CitaService {
                 fecha.atTime(LocalTime.MAX));
 
         prologService.limpiarHechosTemporales();
-        prologService.assertFacts(doctor, citasOcupadas); 
+        prologService.assertFacts(doctor, fecha,citasOcupadas); 
 
         return prologService.obtenerTodasHorasDisponibles(doctor, fecha);
     }

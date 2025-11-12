@@ -3,6 +3,8 @@ package com.sgch.hospital.model.entity;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -32,6 +34,7 @@ public class Receta {
     private LocalDateTime fechaEmision = LocalDateTime.now();
 
     // Detalle de la prescripción: la lista de medicamentos y dosis
+    @JsonIgnore
     @OneToMany(mappedBy = "receta", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DetalleReceta> detalles;
 }

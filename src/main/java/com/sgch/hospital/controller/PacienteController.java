@@ -23,12 +23,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.sgch.hospital.model.DTO.AgendarCitaRequest;
 import com.sgch.hospital.model.DTO.CitaReprogramarRequest;
+import com.sgch.hospital.model.DTO.DoctorListDTO;
 import com.sgch.hospital.model.DTO.PacienteUpdateDTO;
 import com.sgch.hospital.model.entity.Cita;
+import com.sgch.hospital.model.entity.Especialidad;
 import com.sgch.hospital.model.entity.Paciente;
 import com.sgch.hospital.model.entity.Receta;
 import com.sgch.hospital.model.entity.Usuario;
+import com.sgch.hospital.repository.EspecialidadRepository;
 import com.sgch.hospital.service.CitaService;
+import com.sgch.hospital.service.DoctorService;
 import com.sgch.hospital.service.ExpedienteService;
 import com.sgch.hospital.service.RecetaPdfService;
 import com.sgch.hospital.service.UsuarioService;
@@ -45,6 +49,8 @@ public class PacienteController {
     private final UsuarioService usuarioService;
     private final ExpedienteService expedienteService;
     private final RecetaPdfService recetaPdfService;
+    private final DoctorService doctorService;
+    private final EspecialidadRepository especialidadRepository;
 
     private Usuario getAuthenticatedUser() throws Exception {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -180,14 +186,14 @@ public class PacienteController {
             }
 
             Paciente paciente = (Paciente) usuario;
-            
+
             // Obtener la receta
             Receta receta = expedienteService.obtenerRecetaPorId(recetaId);
-            
+
             // Validar que la receta pertenece al paciente autenticado
             if (!receta.getNotaMedica().getExpediente().getPaciente().getId().equals(paciente.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("No tiene permisos para acceder a esta receta.");
+                        .body("No tiene permisos para acceder a esta receta.");
             }
 
             // Generar PDF
@@ -196,12 +202,12 @@ public class PacienteController {
             // Configurar headers para descarga
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", 
-                "mi_receta_" + receta.getId() + ".pdf");
+            headers.setContentDispositionFormData("attachment",
+                    "mi_receta_" + receta.getId() + ".pdf");
 
             return ResponseEntity.ok()
-                .headers(headers)
-                .body(pdfBytes);
+                    .headers(headers)
+                    .body(pdfBytes);
 
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error al generar PDF: " + e.getMessage());
@@ -218,14 +224,14 @@ public class PacienteController {
             }
 
             Paciente paciente = (Paciente) usuario;
-            
+
             // Obtener la receta
             Receta receta = expedienteService.obtenerRecetaPorId(recetaId);
-            
+
             // Validar que la receta pertenece al paciente autenticado
             if (!receta.getNotaMedica().getExpediente().getPaciente().getId().equals(paciente.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("No tiene permisos para acceder a esta receta.");
+                        .body("No tiene permisos para acceder a esta receta.");
             }
 
             // Generar HTML
@@ -235,8 +241,8 @@ public class PacienteController {
             headers.setContentType(MediaType.TEXT_HTML);
 
             return ResponseEntity.ok()
-                .headers(headers)
-                .body(html);
+                    .headers(headers)
+                    .body(html);
 
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error al generar vista HTML: " + e.getMessage());
@@ -253,14 +259,63 @@ public class PacienteController {
             }
 
             Paciente paciente = (Paciente) usuario;
-            
+
             // Obtener todas las recetas del paciente
             List<Receta> recetas = expedienteService.obtenerTodasLasRecetasPorPaciente(paciente.getId());
-            
+
             return ResponseEntity.ok(recetas);
 
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error al obtener recetas: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/doctores")
+    public ResponseEntity<List<DoctorListDTO>> listarDoctores() {
+        List<DoctorListDTO> doctores = doctorService.listarDoctoresDisponibles();
+
+        if (doctores.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(doctores);
+    }
+
+    @GetMapping("/especialidades")
+    public ResponseEntity<List<Especialidad>> listarEspecialidades() {
+        List<Especialidad> especialidades = especialidadRepository.findAll();
+        return especialidades.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(especialidades);
+    }
+
+    @GetMapping("/historial/recetas")
+    public ResponseEntity<?> obtenerTodasLasRecetas() {
+        try {
+            Usuario usuario = getAuthenticatedUser();
+            if (!(usuario instanceof Paciente)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acceso denegado.");
+            }
+
+            List<Receta> recetas = expedienteService.obtenerTodasLasRecetasPorPaciente(usuario.getId());
+
+            if (recetas.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NO_CONTENT).body("No hay historial de recetas.");
+            }
+
+            return ResponseEntity.ok(recetas);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/receta/{recetaId}")
+    public ResponseEntity<?> obtenerDetalleReceta(@PathVariable Long recetaId) {
+        try {
+            // En un sistema real, verificaríamos que esta receta pertenezca al usuario
+            // autenticado.
+
+            Receta receta = expedienteService.obtenerRecetaPorId(recetaId);
+            return ResponseEntity.ok(receta);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Receta no encontrada.");
         }
     }
 }

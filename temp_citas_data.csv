@@ -1,0 +1,8 @@
+id_cita,estado,doctor_id,especialidad
+1,CONFIRMADA,2,Cardiologia
+2,REALIZADA,3,Pediatria
+3,REALIZADA,2,Cardiologia
+4,CANCELADA,4,Dermatologia
+5,PENDIENTE,2,Cardiologia
+6,CONFIRMADA,3,Pediatria
+7,CONFIRMADA,2,Cardiologia
