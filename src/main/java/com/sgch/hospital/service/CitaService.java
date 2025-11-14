@@ -5,10 +5,12 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
 import com.sgch.hospital.external.prolog.PrologService;
+import com.sgch.hospital.model.DTO.CitaResponseDTO; // Importar el nuevo DTO
 import com.sgch.hospital.model.entity.Cita;
 import com.sgch.hospital.model.entity.Cita.EstadoCita;
 import com.sgch.hospital.model.entity.Doctor;
@@ -27,7 +29,7 @@ public class CitaService {
     private final PrologService prologService; 
     private final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
-    public Cita agendarCita(Long doctorId, Paciente paciente, LocalDate fecha, String motivo, LocalTime hora)
+    public CitaResponseDTO agendarCita(Long doctorId, Paciente paciente, LocalDate fecha, String motivo, LocalTime hora)
             throws Exception {
 
         Doctor doctor = doctorRepository.findById(doctorId)
@@ -55,11 +57,14 @@ public class CitaService {
         nuevaCita.setEstado(Cita.EstadoCita.CONFIRMADA);
 
 
-        return citaRepository.save(nuevaCita);
+        Cita citaGuardada = citaRepository.save(nuevaCita);
+        return new CitaResponseDTO(citaGuardada); // Devolver el DTO
     }
 
-    public List<Cita> obtenerCitasPorPaciente(Long pacienteId) {
-        return citaRepository.findByPacienteId(pacienteId);
+    public List<CitaResponseDTO> obtenerCitasPorPaciente(Long pacienteId) {
+        return citaRepository.findByPacienteId(pacienteId).stream()
+                .map(CitaResponseDTO::new)
+                .collect(Collectors.toList());
     }
 
     public List<Cita> obtenerCitasPorDoctor(Long doctorId) throws Exception {
@@ -104,14 +109,14 @@ public class CitaService {
         return citaRepository.save(cita);
     }
 
-    public Cita postergarCita(Long citaId, Long nuevoDoctorId, LocalDate nuevaFecha, String nuevoMotivo,LocalTime nuevaHora)
+    public CitaResponseDTO postergarCita(Long citaId, Long nuevoDoctorId, LocalDate nuevaFecha, String nuevoMotivo,LocalTime nuevaHora)
             throws Exception {
 
         Cita citaAntigua = cancelarCita(citaId);
 
         Paciente paciente = citaAntigua.getPaciente();
 
-        return agendarCita(nuevoDoctorId, paciente, nuevaFecha, nuevoMotivo,nuevaHora);
+        return agendarCita(nuevoDoctorId, paciente, nuevaFecha, nuevoMotivo,nuevaHora); // agendarCita ahora devuelve CitaResponseDTO
     }
 
     public List<Cita> buscarCitas(Long doctorId, LocalDate fecha) {

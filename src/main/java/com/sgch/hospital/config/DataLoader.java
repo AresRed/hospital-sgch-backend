@@ -271,6 +271,19 @@ public class DataLoader implements CommandLineRunner {
             detRec2.setInstrucciones("Completar el ciclo de 7 días.");
             detalleRecetaRepository.save(detRec2);
 
+            // Añadir Receta para paciente2
+            Receta rec2 = new Receta();
+            rec2.setNotaMedica(nm2); // Asociar a la nota médica de paciente2
+            rec2.setFechaEmision(nm2.getFechaHora());
+            recetaRepository.save(rec2);
+
+            DetalleReceta detRec3 = new DetalleReceta();
+            detRec3.setReceta(rec2);
+            detRec3.setNombreMedicamento("Ibuprofeno");
+            detRec3.setDosis("400mg cada 6 horas");
+            detRec3.setInstrucciones("Tomar si es necesario para el dolor.");
+            detalleRecetaRepository.save(detRec3);
+
             System.out.println("¡Datos iniciales creados con éxito!");
         }
     }

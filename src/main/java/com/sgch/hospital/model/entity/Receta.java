@@ -35,6 +35,6 @@ public class Receta {
 
     // Detalle de la prescripción: la lista de medicamentos y dosis
     @JsonIgnore
-    @OneToMany(mappedBy = "receta", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "receta", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER) // Cambiado a EAGER
     private List<DetalleReceta> detalles;
 }

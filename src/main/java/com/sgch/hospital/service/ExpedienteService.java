@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.sgch.hospital.model.DTO.ExpedienteUpdateDTO;
 import com.sgch.hospital.model.DTO.FinalizarCitaRequest;
+import com.sgch.hospital.model.DTO.RecetaResponseDTO; // Importar el nuevo DTO
 import com.sgch.hospital.model.entity.Cita;
 import com.sgch.hospital.model.entity.DetalleReceta;
 import com.sgch.hospital.model.entity.Doctor;
@@ -127,23 +128,23 @@ public class ExpedienteService {
         }
 
         public Receta obtenerRecetaPorId(Long recetaId) throws Exception {
-                return recetaRepository.findById(recetaId)
+                return recetaRepository.findByIdWithDetallesAndNotaMedicaAndExpediente(recetaId) // Usar el nuevo método
                                 .orElseThrow(() -> new Exception("Receta no encontrada."));
         }
 
-        public List<Receta> obtenerTodasLasRecetasPorPaciente(Long pacienteId) throws Exception {
+        public List<RecetaResponseDTO> obtenerTodasLasRecetasPorPaciente(Long pacienteId) throws Exception {
                 Paciente paciente = pacienteRepository.findById(pacienteId)
                                 .orElseThrow(() -> new Exception("Paciente no encontrado."));
 
-                Expediente expediente = expedienteRepository.findByPaciente(paciente)
+                Expediente expediente = expedienteRepository.findByPacienteWithNotas(paciente)
                                 .orElseThrow(() -> new Exception("Expediente no encontrado para este paciente."));
 
                 return expediente.getNotas().stream()
                                 .map(NotaMedica::getReceta)
                                 .filter(receta -> receta != null)
-                                .sorted((r1, r2) -> r2.getFechaEmision().compareTo(r1.getFechaEmision())) // Ordenar por
-                                                                                                          // fecha
-                                                                                                          // descendente
+                                .peek(receta -> receta.getDetalles().size()) // Forzar la inicialización de detalles
+                                .sorted((r1, r2) -> r2.getFechaEmision().compareTo(r1.getFechaEmision()))
+                                .map(RecetaResponseDTO::new)
                                 .collect(Collectors.toList());
         }
 
