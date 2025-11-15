@@ -12,8 +12,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${EMAIL_USERNAME}
-    password: ${EMAIL_PASSWORD}
+    username: carlos.cme.20@gmail.com
+    password: carlos04
     properties:
       mail:
         smtp:
@@ -23,21 +23,22 @@ spring:
 
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/hospital-sgch
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    url: jdbc:postgresql://localhost:5432/hospital_sgch
+    username: postgres
+    password: carlos04
     driver-class-name: org.postgresql.Driver
 
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: create 
+      ddl-auto: create
     show-sql: true
     properties:
-        jdbc:
+        hibernate:
+        jdbc:    
           time_zone: UTC
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
 jwt:
-  secret:  ${JWT_SECRET}
+  secret:  ZXCVBN-SECRET-QUYWTQ-YYYQKP
   expiration: 3600000 # 1 hora
-  

@@ -25,8 +25,13 @@ public class RegistroRequest {
     @NotBlank(message = "La contraseña es obligatoria")
     private String password;
 
+    private String telefono;
+
+    @NotBlank(message = "El rol es obligatorio")
+    private String rol;
+
     // Campo opcional, pero crucial para que el administrador pueda registrar otros roles
-    private String rol; // Puede ser "PACIENTE", "DOCTOR", o "ADMINISTRADOR"
+    private Long especialidadId;  // Puede ser "PACIENTE", "DOCTOR", o "ADMINISTRADOR"
     private String especialidad; // Solo para Doctor
     private String seguroMedico; // Solo para Paciente
 }

@@ -21,4 +21,9 @@ public class Especialidad {
     private String nombre; // Ej: "Cardiología", "Pediatría"
     
     private String descripcion;
+
+    public Especialidad(Long id, String nombre) {
+        this.id = id;
+        this.nombre = nombre;
+    }
 }

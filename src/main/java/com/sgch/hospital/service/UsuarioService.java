@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.sgch.hospital.model.DTO.PacienteUpdateDTO;
 import com.sgch.hospital.model.DTO.RegistroRequest;
+import com.sgch.hospital.model.entity.Administrador;
 import com.sgch.hospital.model.entity.Doctor;
 import com.sgch.hospital.model.entity.Especialidad;
 import com.sgch.hospital.model.entity.Paciente;
@@ -44,6 +45,7 @@ public class UsuarioService {
         System.out.println("DEBUG: Email no existe. Asignando rol y cifrando contraseña...");
         usuario.setRol(rol);
         usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
+        usuario.setActivo(true);
 
         // 2. Guardar en la DB
         Usuario nuevoUsuario;
@@ -107,22 +109,28 @@ public class UsuarioService {
             doctor.setHorarioAtencionFin("17:00");
             doctor.setDuracionCitaMinutos(30);
 
-            // --- LÍNEA DE DEBUG TEMPORAL ---
-            System.out.println("DEBUG REGISTRO: Buscando especialidad: " + req.getEspecialidad());
-            // -------------------------------
+            Especialidad especialidad = null;
 
-            // LÓGICA DE ESPECIALIDAD: Busca el objeto Especialidad
-            Especialidad especialidad = especialidadRepository.findByNombre(req.getEspecialidad());
-
-            // --- LÍNEA DE DEBUG TEMPORAL ---
-            System.out.println("DEBUG REGISTRO: Especialidad encontrada (NULL si no existe): " + especialidad);
-            // --
-            if (especialidad == null) {
-                throw new IllegalArgumentException("Especialidad no válida o no registrada: " + req.getEspecialidad());
+            if (req.getEspecialidadId() != null) {
+                System.out.println("DEBUG: Buscando especialidad por ID: " + req.getEspecialidadId());
+                especialidad = especialidadRepository.findById(req.getEspecialidadId())
+                        .orElse(null);
+            } else if (req.getEspecialidad() != null) {
+                // Fallback: Buscar por nombre (compatibilidad con versión anterior)
+                System.out.println("DEBUG: Buscando especialidad por nombre: " + req.getEspecialidad());
+                especialidad = especialidadRepository.findByNombre(req.getEspecialidad());
             }
+
+            if (especialidad == null) {
+                throw new IllegalArgumentException(
+                    "Especialidad no válida o no registrada. ID: " + req.getEspecialidadId() + 
+                    ", Nombre: " + req.getEspecialidad()
+                );
+            }
+
+            System.out.println("DEBUG: Especialidad encontrada: " + especialidad.getNombre());
             doctor.setEspecialidad(especialidad);
             usuario = doctor;
-            System.out.println("DEBUG: Entidad Doctor creada y configurada.");
 
         } else if (rol == Rol.PACIENTE) {
             System.out.println("DEBUG: Creando entidad Paciente...");
@@ -131,8 +139,13 @@ public class UsuarioService {
             usuario = paciente;
             System.out.println("DEBUG: Entidad Paciente creada.");
 
+        } else if (rol == Rol.ADMINISTRADOR) {
+            System.out.println("DEBUG: Creando entidad Administrador...");
+            Administrador administrador = new Administrador();
+            usuario = administrador;
+
         } else {
-            usuario = new Usuario(); // Usar la clase base para Admin (o crear Admin si es necesario)
+            throw new Exception("Rol no soportado: " + rol);
         }
 
         // 2. Mapear campos comunes
@@ -142,6 +155,7 @@ public class UsuarioService {
         usuario.setApellido(req.getApellido());
         usuario.setEmail(req.getEmail());
         usuario.setPassword(req.getPassword()); // Será cifrada en registrarNuevoUsuario
+        usuario.setTelefono(req.getTelefono());
         System.out.println("DEBUG: Campos comunes mapeados.");
 
         // 3. Pasar a la lógica central de registro
