@@ -1,9 +1,13 @@
 package com.sgch.hospital.controller;
 
+import java.nio.file.Files;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import org.springframework.http.MediaType;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -161,33 +165,81 @@ public class AdminController {
         }
     }
 
-    @GetMapping("/estadisticas")
-    public ResponseEntity<?> getEstadisticas(
-            @RequestParam(defaultValue = "cancelaciones") String metric // Nuevo parámetro
-    ) {
-        try {
-            var todasLasCitas = citaService.obtenerTodasLasCitas();
-
-            if (todasLasCitas.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NO_CONTENT).body("No hay datos para analizar.");
-            }
-
-            String outputFileName = "reporte_" + metric + "_" + System.currentTimeMillis() + ".png";
-
-            // 1. Delegar al servicio de Python, pasando el nombre de la métrica
-            String rutaImagen = analyticsService.generarGrafico(
-                    todasLasCitas,
-                    outputFileName,
-                    metric // Pasamos la métrica
-            );
-
-            return ResponseEntity.ok("Gráfico " + metric + " generado con éxito. Ruta: " + rutaImagen);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error en el análisis de datos: " + e.getMessage());
+    /**
+ * Genera un reporte gráfico usando Python y retorna la imagen PNG
+ * @param metrica Tipo de métrica: "cancelaciones" o "citas_por_especialidad"
+ */
+@GetMapping(value = "/reportes/{metrica}", produces = MediaType.IMAGE_PNG_VALUE)
+public ResponseEntity<byte[]> generarReporte(@PathVariable String metrica) {
+    System.out.println("=== INICIO GENERACIÓN DE REPORTE ===");
+    System.out.println("Métrica solicitada: " + metrica);
+    
+    try {
+        // Validar métrica
+        if (!metrica.equals("cancelaciones") && !metrica.equals("citas_por_especialidad")) {
+            System.err.println("ERROR: Métrica no válida: " + metrica);
+            return ResponseEntity.badRequest().build();
         }
+
+        // Obtener todas las citas
+        List<Cita> todasLasCitas = citaService.obtenerTodasLasCitas();
+        System.out.println("Total de citas encontradas: " + todasLasCitas.size());
+
+        if (todasLasCitas.isEmpty()) {
+            System.err.println("ERROR: No hay datos de citas");
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        }
+
+        // Generar nombre único para el archivo
+        String outputFileName = "reporte_" + metrica + "_" + System.currentTimeMillis() + ".png";
+        System.out.println("Nombre del archivo: " + outputFileName);
+
+        // Llamar al servicio de Python
+        System.out.println("Llamando al servicio de Python...");
+        String rutaImagen = analyticsService.generarGrafico(
+            todasLasCitas,
+            outputFileName,
+            metrica
+        );
+        System.out.println("Imagen generada en: " + rutaImagen);
+
+        // Leer el archivo generado
+        Path imagePath = Paths.get(rutaImagen);
+        System.out.println("Leyendo archivo desde: " + imagePath.toAbsolutePath());
+        
+        byte[] imageBytes = Files.readAllBytes(imagePath);
+        System.out.println("Bytes leídos: " + imageBytes.length);
+
+        // Eliminar el archivo temporal después de leerlo
+        Files.deleteIfExists(imagePath);
+        System.out.println("Archivo temporal eliminado");
+
+        System.out.println("=== REPORTE GENERADO EXITOSAMENTE ===");
+        
+        // Retornar la imagen como respuesta
+        return ResponseEntity.ok()
+            .contentType(MediaType.IMAGE_PNG)
+            .body(imageBytes);
+
+    } catch (Exception e) {
+        System.err.println("=== ERROR AL GENERAR REPORTE ===");
+        System.err.println("Tipo de error: " + e.getClass().getName());
+        System.err.println("Mensaje: " + e.getMessage());
+        e.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
+}
+
+/**
+ * Obtiene las métricas disponibles para generar reportes
+ */
+@GetMapping("/reportes/metricas-disponibles")
+public ResponseEntity<Map<String, String>> obtenerMetricasDisponibles() {
+    Map<String, String> metricas = new HashMap<>();
+    metricas.put("cancelaciones", "Tasa de Cancelación por Doctor");
+    metricas.put("citas_por_especialidad", "Citas Finalizadas por Especialidad");
+    return ResponseEntity.ok(metricas);
+}
 
     @GetMapping("/estadisticas/resumen")
     public ResponseEntity<Map<String, Object>> obtenerResumenEstadisticas() {

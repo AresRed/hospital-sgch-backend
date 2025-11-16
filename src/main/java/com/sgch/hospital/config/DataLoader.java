@@ -47,23 +47,6 @@ public class DataLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-
-        if (usuarioRepository.findByEmail("admin@hospital.com").isEmpty()) {
-            System.out.println("=== CREANDO ADMINISTRADOR POR DEFECTO ===");
-            
-            Administrador adminDefault = new Administrador();
-            adminDefault.setDni("12345678");
-            adminDefault.setNombre("Admin");
-            adminDefault.setApellido("Sistema");
-            adminDefault.setEmail("admin@hospital.com");
-            adminDefault.setPassword(passwordEncoder.encode("admin123"));
-            adminDefault.setTelefono("999888777");
-            adminDefault.setRol(Rol.ADMINISTRADOR);
-            adminDefault.setActivo(true);
-            usuarioRepository.save(adminDefault);
-            
-            System.out.println("✅ Administrador creado: admin@hospital.com / admin123");
-        }
         
         if (usuarioRepository.count() == 0) {
             System.out.println("Inicializando datos de prueba...");

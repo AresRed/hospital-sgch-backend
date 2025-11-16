@@ -61,7 +61,7 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests(auth -> auth.requestMatchers("api/auth/**").permitAll()
                 .requestMatchers("/api/especialidades").permitAll()        
                 .requestMatchers("/api/admin/**").hasAuthority("ADMINISTRADOR")
-                        .requestMatchers("/api/admin/horario-doctor").hasAuthority("ADMINISTRADOR")
+                        //.requestMatchers("/api/admin/horario-doctor").hasAuthority("ADMINISTRADOR")
                         .requestMatchers("/api/doctor/**").hasAnyAuthority("DOCTOR", "ADMINISTRADOR")
                         .requestMatchers("api/paciente/**").hasAnyAuthority("PACIENTE")
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll() // Permitir solicitudes OPTIONS para CORS

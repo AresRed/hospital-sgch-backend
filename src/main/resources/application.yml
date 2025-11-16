@@ -8,7 +8,6 @@ spring:
     name: hospital-sgch-backend
 
 
-
   mail:
     host: smtp.gmail.com
     port: 587
@@ -38,6 +37,9 @@ spring:
         jdbc:    
           time_zone: UTC
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  python:
+  script:
+    path: python/analytics_script.py
 
 jwt:
   secret:  ZXCVBN-SECRET-QUYWTQ-YYYQKP

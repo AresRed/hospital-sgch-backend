@@ -1,0 +1,5 @@
+﻿id_cita,estado,doctor_id,especialidad
+1,REALIZADA,1,Cardiologia
+2,REALIZADA,1,Cardiologia
+3,CANCELADA,2,Pediatria
+4,REALIZADA,2,Neurologia
