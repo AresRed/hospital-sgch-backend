@@ -23,7 +23,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.sgch.hospital.model.DTO.AdminUpdateDTO;
 import com.sgch.hospital.model.DTO.BloqueoHorarioRequest;
+import com.sgch.hospital.model.DTO.DoctorUpdateDTO;
+import com.sgch.hospital.model.DTO.PacienteUpdateDTO;
 import com.sgch.hospital.model.DTO.RegistroRequest;
 import com.sgch.hospital.model.entity.BloqueoHorario;
 import com.sgch.hospital.model.entity.Cita;
@@ -63,7 +66,8 @@ public class AdminController {
         }
     }
 
-     @GetMapping("/usuarios/{id}")
+     
+    @GetMapping("/usuarios/{id}")
     public ResponseEntity<?> obtenerUsuarioPorId(@PathVariable Long id) {
         try {
             Usuario usuario = adminService.obtenerUsuarioPorId(id);
@@ -115,15 +119,22 @@ public class AdminController {
     @PostMapping("/personal/registrar")
     public ResponseEntity<?> registrarPersonal(@RequestBody RegistroRequest request) {
         try {
-
-            usuarioService.convertirYRegistrar(request);
-            return ResponseEntity.ok("Personal registrado y correo de verificación enviado.");
+            Usuario usuario = usuarioService.convertirYRegistrar(request);
+            
+            // ✅ DEVOLVER OBJETO CON ID EN LUGAR DE STRING
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Personal registrado y correo de verificación enviado.");
+            response.put("id", usuario.getId());
+            response.put("tipo", usuario.getRol().toString());
+            
+            return ResponseEntity.ok(response);
+            
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error al registrar personal: " + e.getMessage());
         }
     }
-
-     @GetMapping("/doctores")
+    
+    @GetMapping("/doctores")
     public ResponseEntity<List<Doctor>> obtenerTodosLosDoctores() {
         try {
             List<Doctor> doctores = adminService.obtenerTodosLosDoctores();
@@ -134,15 +145,42 @@ public class AdminController {
     }
 
     @GetMapping("/doctores/{id}")
-    public ResponseEntity<?> obtenerDoctorPorId(@PathVariable Long id) {
-        try {
-            Doctor doctor = adminService.obtenerDoctorPorId(id);
-            return ResponseEntity.ok(doctor);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Doctor no encontrado: " + e.getMessage());
-        }
+public ResponseEntity<?> getDoctorById(@PathVariable Long id) {
+    try {
+        System.out.println("🔍 Buscando doctor con ID: " + id);
+        
+        Doctor doctor = doctorService.findDoctorById(id);
+        System.out.println("✅ Doctor encontrado: " + doctor.getNombre() + " " + doctor.getApellido());
+        
+        // Obtener bloqueos de horario del doctor
+        List<BloqueoHorario> bloqueos = bloqueoHorarioService.obtenerBloqueosPorDoctor(id);
+        System.out.println("📋 Número de bloqueos encontrados: " + bloqueos.size());
+        
+        // Crear DTO de respuesta
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", doctor.getId());
+        response.put("dni", doctor.getDni());
+        response.put("nombre", doctor.getNombre());
+        response.put("apellido", doctor.getApellido());
+        response.put("email", doctor.getEmail());
+        response.put("telefono", doctor.getTelefono());
+        response.put("direccion", doctor.getDireccion());
+        response.put("activo", doctor.isActivo());
+        response.put("especialidad", doctor.getEspecialidad());
+        response.put("horarioAtencionInicio", doctor.getHorarioAtencionInicio());
+        response.put("horarioAtencionFin", doctor.getHorarioAtencionFin());
+        response.put("duracionCitaMinutos", doctor.getDuracionCitaMinutos());
+        response.put("bloqueos", bloqueos);
+        
+        System.out.println("✅ Respuesta preparada para doctor ID: " + id);
+        return ResponseEntity.ok(response);
+        
+    } catch (Exception e) {
+        System.err.println("❌ Error al buscar doctor ID " + id + ": " + e.getMessage());
+        e.printStackTrace();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
     }
+}
 
     @GetMapping("/pacientes")
     public ResponseEntity<List<Paciente>> obtenerTodosLosPacientes() {
@@ -165,81 +203,113 @@ public class AdminController {
         }
     }
 
-    /**
- * Genera un reporte gráfico usando Python y retorna la imagen PNG
- * @param metrica Tipo de métrica: "cancelaciones" o "citas_por_especialidad"
- */
-@GetMapping(value = "/reportes/{metrica}", produces = MediaType.IMAGE_PNG_VALUE)
-public ResponseEntity<byte[]> generarReporte(@PathVariable String metrica) {
-    System.out.println("=== INICIO GENERACIÓN DE REPORTE ===");
-    System.out.println("Métrica solicitada: " + metrica);
-    
+    @PutMapping("/doctores/{id}")
+public ResponseEntity<?> actualizarDoctor(
+        @PathVariable Long id,
+        @Valid @RequestBody DoctorUpdateDTO dto) {
     try {
-        // Validar métrica
-        if (!metrica.equals("cancelaciones") && !metrica.equals("citas_por_especialidad")) {
-            System.err.println("ERROR: Métrica no válida: " + metrica);
-            return ResponseEntity.badRequest().build();
-        }
-
-        // Obtener todas las citas
-        List<Cita> todasLasCitas = citaService.obtenerTodasLasCitas();
-        System.out.println("Total de citas encontradas: " + todasLasCitas.size());
-
-        if (todasLasCitas.isEmpty()) {
-            System.err.println("ERROR: No hay datos de citas");
-            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-        }
-
-        // Generar nombre único para el archivo
-        String outputFileName = "reporte_" + metrica + "_" + System.currentTimeMillis() + ".png";
-        System.out.println("Nombre del archivo: " + outputFileName);
-
-        // Llamar al servicio de Python
-        System.out.println("Llamando al servicio de Python...");
-        String rutaImagen = analyticsService.generarGrafico(
-            todasLasCitas,
-            outputFileName,
-            metrica
-        );
-        System.out.println("Imagen generada en: " + rutaImagen);
-
-        // Leer el archivo generado
-        Path imagePath = Paths.get(rutaImagen);
-        System.out.println("Leyendo archivo desde: " + imagePath.toAbsolutePath());
-        
-        byte[] imageBytes = Files.readAllBytes(imagePath);
-        System.out.println("Bytes leídos: " + imageBytes.length);
-
-        // Eliminar el archivo temporal después de leerlo
-        Files.deleteIfExists(imagePath);
-        System.out.println("Archivo temporal eliminado");
-
-        System.out.println("=== REPORTE GENERADO EXITOSAMENTE ===");
-        
-        // Retornar la imagen como respuesta
-        return ResponseEntity.ok()
-            .contentType(MediaType.IMAGE_PNG)
-            .body(imageBytes);
-
+        usuarioService.actualizarDoctor(id, dto);
+        return ResponseEntity.ok("Doctor actualizado exitosamente");
     } catch (Exception e) {
-        System.err.println("=== ERROR AL GENERAR REPORTE ===");
-        System.err.println("Tipo de error: " + e.getClass().getName());
-        System.err.println("Mensaje: " + e.getMessage());
-        e.printStackTrace();
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        return ResponseEntity.badRequest()
+                .body("Error al actualizar doctor: " + e.getMessage());
     }
 }
 
-/**
- * Obtiene las métricas disponibles para generar reportes
- */
-@GetMapping("/reportes/metricas-disponibles")
-public ResponseEntity<Map<String, String>> obtenerMetricasDisponibles() {
-    Map<String, String> metricas = new HashMap<>();
-    metricas.put("cancelaciones", "Tasa de Cancelación por Doctor");
-    metricas.put("citas_por_especialidad", "Citas Finalizadas por Especialidad");
-    return ResponseEntity.ok(metricas);
+@PutMapping("/pacientes/{id}")
+public ResponseEntity<?> actualizarPaciente(
+        @PathVariable Long id,
+        @Valid @RequestBody PacienteUpdateDTO dto) {
+    try {
+        usuarioService.actualizarPerfilPaciente(id, dto);
+        return ResponseEntity.ok("Paciente actualizado exitosamente");
+    } catch (Exception e) {
+        return ResponseEntity.badRequest()
+                .body("Error al actualizar paciente: " + e.getMessage());
+    }
 }
+
+@PutMapping("/administradores/{id}")
+public ResponseEntity<?> actualizarAdministrador(
+        @PathVariable Long id,
+        @Valid @RequestBody AdminUpdateDTO dto) {
+    try {
+        usuarioService.actualizarAdministrador(id, dto);
+        return ResponseEntity.ok("Administrador actualizado exitosamente");
+    } catch (Exception e) {
+        return ResponseEntity.badRequest()
+                .body("Error al actualizar administrador: " + e.getMessage());
+    }
+}
+
+    @GetMapping(value = "/reportes/{metrica}", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> generarReporte(@PathVariable String metrica) {
+        System.out.println("=== INICIO GENERACIÓN DE REPORTE ===");
+        System.out.println("Métrica solicitada: " + metrica);
+        
+        try {
+            // Validar métrica
+            if (!metrica.equals("cancelaciones") && !metrica.equals("citas_por_especialidad")) {
+                System.err.println("ERROR: Métrica no válida: " + metrica);
+                return ResponseEntity.badRequest().build();
+            }
+
+            // Obtener todas las citas
+            List<Cita> todasLasCitas = citaService.obtenerTodasLasCitas();
+            System.out.println("Total de citas encontradas: " + todasLasCitas.size());
+
+            if (todasLasCitas.isEmpty()) {
+                System.err.println("ERROR: No hay datos de citas");
+                return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+            }
+
+            // Generar nombre único para el archivo
+            String outputFileName = "reporte_" + metrica + "_" + System.currentTimeMillis() + ".png";
+            System.out.println("Nombre del archivo: " + outputFileName);
+
+            // Llamar al servicio de Python
+            System.out.println("Llamando al servicio de Python...");
+            String rutaImagen = analyticsService.generarGrafico(
+                todasLasCitas,
+                outputFileName,
+                metrica
+            );
+            System.out.println("Imagen generada en: " + rutaImagen);
+
+            // Leer el archivo generado
+            Path imagePath = Paths.get(rutaImagen);
+            System.out.println("Leyendo archivo desde: " + imagePath.toAbsolutePath());
+            
+            byte[] imageBytes = Files.readAllBytes(imagePath);
+            System.out.println("Bytes leídos: " + imageBytes.length);
+
+            // Eliminar el archivo temporal después de leerlo
+            Files.deleteIfExists(imagePath);
+            System.out.println("Archivo temporal eliminado");
+
+            System.out.println("=== REPORTE GENERADO EXITOSAMENTE ===");
+            
+            // Retornar la imagen como respuesta
+            return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .body(imageBytes);
+
+        } catch (Exception e) {
+            System.err.println("=== ERROR AL GENERAR REPORTE ===");
+            System.err.println("Tipo de error: " + e.getClass().getName());
+            System.err.println("Mensaje: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/reportes/metricas-disponibles")
+    public ResponseEntity<Map<String, String>> obtenerMetricasDisponibles() {
+        Map<String, String> metricas = new HashMap<>();
+        metricas.put("cancelaciones", "Tasa de Cancelación por Doctor");
+        metricas.put("citas_por_especialidad", "Citas Finalizadas por Especialidad");
+        return ResponseEntity.ok(metricas);
+    }
 
     @GetMapping("/estadisticas/resumen")
     public ResponseEntity<Map<String, Object>> obtenerResumenEstadisticas() {
@@ -291,6 +361,28 @@ public ResponseEntity<Map<String, String>> obtenerMetricasDisponibles() {
             return ResponseEntity.ok(bloqueo);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error al crear bloqueo: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/bloqueo-horario/doctor/{doctorId}")
+    @PreAuthorize("hasAuthority('ADMINISTRADOR')")
+    public ResponseEntity<?> obtenerBloqueosPorDoctor(@PathVariable Long doctorId) {
+        try {
+            List<BloqueoHorario> bloqueos = bloqueoHorarioService.obtenerBloqueosPorDoctor(doctorId);
+            return ResponseEntity.ok(bloqueos);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al obtener bloqueos: " + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/bloqueo-horario/{bloqueoId}")
+    @PreAuthorize("hasAuthority('ADMINISTRADOR')")
+    public ResponseEntity<?> eliminarBloqueoHorario(@PathVariable Long bloqueoId) {
+        try {
+            bloqueoHorarioService.eliminarBloqueo(bloqueoId);
+            return ResponseEntity.ok("Bloqueo eliminado exitosamente");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al eliminar bloqueo: " + e.getMessage());
         }
     }
     

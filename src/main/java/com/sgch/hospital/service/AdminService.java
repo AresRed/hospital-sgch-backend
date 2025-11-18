@@ -6,6 +6,8 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.sgch.hospital.model.DTO.BloqueoHorarioRequest;
+import com.sgch.hospital.model.entity.BloqueoHorario;
 import com.sgch.hospital.model.entity.Doctor;
 import com.sgch.hospital.model.entity.Paciente;
 import com.sgch.hospital.model.entity.Usuario;

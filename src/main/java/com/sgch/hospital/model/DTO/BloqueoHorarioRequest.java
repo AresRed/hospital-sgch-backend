@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 @Data
 public class BloqueoHorarioRequest {
-
+    private Long id;
     @NotNull private Long doctorId;
     @NotNull private LocalDateTime inicioBloqueo;
     @NotNull private LocalDateTime finBloqueo;

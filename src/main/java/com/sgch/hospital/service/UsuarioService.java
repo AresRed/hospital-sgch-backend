@@ -4,8 +4,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Transactional;
 
+import com.sgch.hospital.model.DTO.AdminUpdateDTO;
+import com.sgch.hospital.model.DTO.DoctorUpdateDTO;
 import com.sgch.hospital.model.DTO.PacienteUpdateDTO;
 import com.sgch.hospital.model.DTO.RegistroRequest;
 import com.sgch.hospital.model.entity.Administrador;
@@ -173,8 +174,74 @@ public class UsuarioService {
     }
 
     @Transactional
-    public void actualizarPerfilPaciente(Long pacienteId, PacienteUpdateDTO dto) throws Exception {
+    public void actualizarEstado(Long userId, boolean activo) throws Exception {
+        Usuario usuario = usuarioRepository.findById(userId)
+                .orElseThrow(() -> new Exception("Usuario no encontrado."));
 
+        usuario.setActivo(activo);
+        usuarioRepository.save(usuario);
+    }
+
+    @Transactional
+    public void actualizarDoctor(Long doctorId, DoctorUpdateDTO dto) throws Exception {
+        Usuario usuario = usuarioRepository.findById(doctorId)
+                .orElseThrow(() -> new Exception("Doctor no encontrado."));
+
+        if (!(usuario instanceof Doctor)) {
+            throw new Exception("El ID de usuario no corresponde a un Doctor.");
+        }
+
+        Doctor doctor = (Doctor) usuario;
+
+        // Actualizar DNI si viene en el DTO
+        if (dto.getDni() != null && !dto.getDni().isEmpty()) {
+            // Verificar que no exista otro usuario con ese DNI
+            if (!doctor.getDni().equals(dto.getDni()) && usuarioRepository.existsByDni(dto.getDni())) {
+                throw new Exception("El DNI ya está registrado por otro usuario.");
+            }
+            doctor.setDni(dto.getDni());
+        }
+
+        // Actualizar campos básicos
+        doctor.setNombre(dto.getNombre());
+        doctor.setApellido(dto.getApellido());
+        
+        // Verificar si el email ya existe (si cambió)
+        if (!doctor.getEmail().equals(dto.getEmail())) {
+            if (usuarioRepository.findByEmail(dto.getEmail()).isPresent()) {
+                throw new Exception("El email ya está registrado.");
+            }
+            doctor.setEmail(dto.getEmail());
+        }
+
+        if (dto.getTelefono() != null) {
+            doctor.setTelefono(dto.getTelefono());
+        }
+
+        if (dto.getDireccion() != null) {
+            doctor.setDireccion(dto.getDireccion());
+        }
+
+        // Actualizar contraseña solo si se proporciona
+        if (dto.getPassword() != null && !dto.getPassword().isEmpty()) {
+            doctor.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+
+        // Actualizar especialidad
+        Especialidad especialidad = especialidadRepository.findById(dto.getEspecialidadId())
+                .orElseThrow(() -> new Exception("Especialidad no encontrada."));
+        doctor.setEspecialidad(especialidad);
+
+        // Actualizar horarios
+        doctor.setHorarioAtencionInicio(dto.getHorarioAtencionInicio());
+        doctor.setHorarioAtencionFin(dto.getHorarioAtencionFin());
+        doctor.setDuracionCitaMinutos(dto.getDuracionCitaMinutos());
+
+        usuarioRepository.save(doctor);
+    }
+
+    @Transactional
+    public void actualizarPerfilPaciente(Long pacienteId, PacienteUpdateDTO dto) throws Exception {
         Usuario usuario = usuarioRepository.findById(pacienteId)
                 .orElseThrow(() -> new Exception("Usuario no encontrado."));
 
@@ -184,27 +251,89 @@ public class UsuarioService {
 
         Paciente paciente = (Paciente) usuario;
 
+        // Actualizar DNI si viene en el DTO
+        if (dto.getDni() != null && !dto.getDni().isEmpty()) {
+            if (!paciente.getDni().equals(dto.getDni()) && usuarioRepository.existsByDni(dto.getDni())) {
+                throw new Exception("El DNI ya está registrado por otro usuario.");
+            }
+            paciente.setDni(dto.getDni());
+        }
+
         paciente.setNombre(dto.getNombre());
-        // Se recomienda lógica extra para el cambio de email/telefono para evitar
-        // duplicados
-        paciente.setEmail(dto.getEmail());
+        paciente.setApellido(dto.getApellido());
+        
+        // Verificar email
+        if (!paciente.getEmail().equals(dto.getEmail())) {
+            if (usuarioRepository.findByEmail(dto.getEmail()).isPresent()) {
+                throw new Exception("El email ya está registrado.");
+            }
+            paciente.setEmail(dto.getEmail());
+        }
 
         if (dto.getTelefono() != null) {
             paciente.setTelefono(dto.getTelefono());
         }
+        
         if (dto.getDireccion() != null) {
             paciente.setDireccion(dto.getDireccion());
+        }
+
+        if (dto.getSeguroMedico() != null) {
+            paciente.setSeguroMedico(dto.getSeguroMedico());
+        }
+
+        // Actualizar contraseña solo si se proporciona
+        if (dto.getPassword() != null && !dto.getPassword().isEmpty()) {
+            paciente.setPassword(passwordEncoder.encode(dto.getPassword()));
         }
 
         usuarioRepository.save(paciente);
     }
 
-    @Transactional
-    public void actualizarEstado(Long userId, boolean activo) throws Exception {
-        Usuario usuario = usuarioRepository.findById(userId)
-                .orElseThrow(() -> new Exception("Usuario no encontrado."));
+    public void actualizarAdministrador(Long adminId, AdminUpdateDTO dto) throws Exception {
+        Usuario usuario = usuarioRepository.findById(adminId)
+                .orElseThrow(() -> new Exception("Administrador no encontrado."));
 
-        usuario.setActivo(activo);
-        usuarioRepository.save(usuario);
+        if (!(usuario instanceof Administrador)) {
+            throw new Exception("El ID de usuario no corresponde a un Administrador.");
+        }
+
+        Administrador admin = (Administrador) usuario;
+
+        // Actualizar DNI si viene en el DTO
+        if (dto.getDni() != null && !dto.getDni().isEmpty()) {
+            if (!admin.getDni().equals(dto.getDni()) && usuarioRepository.existsByDni(dto.getDni())) {
+                throw new Exception("El DNI ya está registrado por otro usuario.");
+            }
+            admin.setDni(dto.getDni());
+        }
+
+        // Actualizar campos básicos
+        admin.setNombre(dto.getNombre());
+        admin.setApellido(dto.getApellido());
+        
+        // Verificar si el email ya existe (si cambió)
+        if (!admin.getEmail().equals(dto.getEmail())) {
+            if (usuarioRepository.findByEmail(dto.getEmail()).isPresent()) {
+                throw new Exception("El email ya está registrado.");
+            }
+            admin.setEmail(dto.getEmail());
+        }
+
+        if (dto.getTelefono() != null) {
+            admin.setTelefono(dto.getTelefono());
+        }
+
+        if (dto.getDireccion() != null) {
+            admin.setDireccion(dto.getDireccion());
+        }
+
+        // Actualizar contraseña solo si se proporciona
+        if (dto.getPassword() != null && !dto.getPassword().isEmpty()) {
+            admin.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+
+        usuarioRepository.save(admin);
     }
+
 }

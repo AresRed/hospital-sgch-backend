@@ -24,4 +24,6 @@ public interface BloqueoHorarioRepository extends JpaRepository<BloqueoHorario, 
         LocalDateTime inicioRango, 
         LocalDateTime finRango
     );
+
+    List<BloqueoHorario> findByDoctorId(Long doctorId);
 }
